@@ -124,6 +124,7 @@ $text = $message->text;
 $premium = $message->from->is_premium;
 $bio = $message->from->about;
 $chat_id = $message->chat->id;
+$username = $username->from->id
 $message_id = $message->message_id;
 $reply = $message->reply_to_message->text;
 $uid = $message->from->id;
