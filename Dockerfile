@@ -1,10 +1,12 @@
 FROM php:8.2-cli
 
 # Kerakli tizim papkalarini oldindan yaratamiz va ruxsat beramiz
-RUN mkdir -p /app/step /app/kino && chmod -R 777 /app
+RUN mkdir -p /app/step /app/komm && chmod -R 777 /app
 
+# Loyihaning barcha fayllarini nusxalaymiz
 COPY . /app
 WORKDIR /app
 
-# Serverni har doim ishlab turishi uchun PHP built-in serverini yoqamiz
-CMD [ "php", "-S", "0.0.0.0:10000", "bot.php" ]
+# Render bergan dinamik portni ishga tushirish qismiga biriktiramiz
+CMD ["sh", "-c", "php -S 0.0.0.0:$PORT bot.php"]
+
