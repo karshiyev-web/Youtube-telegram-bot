@@ -10,13 +10,13 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 
-# --- LOGGING (Xatoliklarni Render panelida chiroyli ko'rish uchun) ---
+# --- LOGGING ---
 logging.basicConfig(level=logging.INFO)
 
 # --- ASOSIY SOZLAMALAR ---
 BOT_TOKEN = "8827072789:AAHaton57wWRfklLLflztam5I35AxjoAozI"
 ADMIN_ID = 6759476991
-CHANNELS = ["@Mega_KinoHd"]  # Majburiy obuna kanali
+CHANNELS = ["@Mega_KinoHd"]  
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -29,7 +29,7 @@ class AdminStates(StatesGroup):
     waiting_for_broadcast_msg = State()
     waiting_for_delete_code = State()
 
-# --- MA'LUMOTLAR BAZASI (Asinxron xavfsiz ulanish uchun) ---
+# --- MA'LUMOTLAR BAZASI ---
 def init_db():
     conn = sqlite3.connect("universal_movies.db")
     cursor = conn.cursor()
@@ -40,7 +40,7 @@ def init_db():
 
 init_db()
 
-# --- WEB SERVER (Render o'chib qolmasligi uchun port ochadi) ---
+# --- WEB SERVER ---
 @app.route('/')
 def home():
     return "Professional Kino Bot 100% Aktiv!"
@@ -62,7 +62,7 @@ async def check_sub(user_id: int) -> bool:
             return False
     return True
 
-# --- ZAMONAVIY KLAVIATURALAR ---
+# --- KLAVIATURALAR ---
 def get_main_keyboard(user_id: int):
     buttons = [[KeyboardButton(text="🔍 Kino qidirish"), KeyboardButton(text="💰 Donat bo'limi")]]
     if user_id == ADMIN_ID:
@@ -85,7 +85,7 @@ def get_admin_keyboard():
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-# --- BOT COMMANDEZ ---
+# --- BOT BUYRUQLARI ---
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     user_id = message.from_user.id
@@ -102,27 +102,32 @@ async def cmd_start(message: types.Message):
 
     await message.answer("👋 **Udar Kino Botga xush kelibsiz!**\n\n🎬 Pastdagi tugmalar yoki to'g'ridan-to'g'ri **kino kodini** yuborib qidirishingiz mumkin.", parse_mode="Markdown", reply_markup=get_main_keyboard(user_id))
 
-# --- INLINE KNOPKALAR ISHLOVCHISI ---
+# --- INLINE HANDLER ---
 @dp.callback_query(F.data == "check_sub")
 async def callback_check_sub(call: types.CallbackQuery):
     if await check_sub(call.from_user.id):
-        await call.message.delete()
+        try:
+            await call.message.delete()
+        except:
+            pass
         await call.message.answer("🎉 Rahmat! Obuna tasdiqlandi.", reply_markup=get_main_keyboard(call.from_user.id))
     else:
         await call.answer("❌ Siz hali kanalimizga a'zo bo'lmadingiz!", show_alert=True)
 
-# --- ADMIN PANEL LOGIKASI ---
+# --- ADMIN PANEL CALLBACKS ---
 @dp.callback_query(F.data.startswith("adm_"))
 async def admin_callbacks(call: types.CallbackQuery, state: FSMContext):
     if call.from_user.id != ADMIN_ID:
         return
 
-        if call.data == "adm_stats":
+    if call.data == "adm_stats":
         conn = sqlite3.connect("universal_movies.db")
         cursor = conn.cursor()
-        u_count = cursor.execute("SELECT COUNT(*) FROM users").fetchone()[0] # [0] qo'shildi
-        m_count = cursor.execute("SELECT COUNT(*) FROM movies").fetchone()[0] # [0] qo'shildi
+        u_res = cursor.execute("SELECT COUNT(*) FROM users").fetchone()
+        m_res = cursor.execute("SELECT COUNT(*) FROM movies").fetchone()
         conn.close()
+        u_count = u_res[0] if u_res else 0
+        m_count = m_res[0] if m_res else 0
         await call.message.answer(f"📊 **Bot statistikasi:**\n\n👤 Jami a'zolar: `{u_count}` ta\n🎬 Bazadagi kinolar: `{m_count}` ta", parse_mode="Markdown")
     
     elif call.data == "adm_add":
@@ -138,11 +143,14 @@ async def admin_callbacks(call: types.CallbackQuery, state: FSMContext):
         await state.set_state(AdminStates.waiting_for_broadcast_msg)
 
     elif call.data == "adm_close":
-        await call.message.delete()
+        try:
+            await call.message.delete()
+        except:
+            pass
     
     await call.answer()
 
-# --- ADMIN STEP HANDLERS (FSM JRAYONLARI) ---
+# --- ADMIN PROCESSES (FSM) ---
 @dp.message(AdminStates.waiting_for_movie_code)
 async def process_movie_code(message: types.Message, state: FSMContext):
     await state.update_data(m_code=message.text.strip())
@@ -154,7 +162,7 @@ async def process_movie_video(message: types.Message, state: FSMContext):
     data = await state.get_data()
     movie_code = data['m_code']
     file_id = message.video.file_id
-    title = message.caption if message.caption else "Nomsiz kino"
+    title = message.caption.strip() if message.caption else "Nomsiz kino"
 
     conn = sqlite3.connect("universal_movies.db")
     cursor = conn.cursor()
@@ -167,19 +175,19 @@ async def process_movie_video(message: types.Message, state: FSMContext):
 
 @dp.message(AdminStates.waiting_for_delete_code)
 async def process_delete_movie(message: types.Message, state: FSMContext):
-        # Kod orqali kinoni bazadan izlash
-    movie_code = message.text.strip()
+    code = message.text.strip()
     conn = sqlite3.connect("universal_movies.db")
     cursor = conn.cursor()
-    result = cursor.execute("SELECT file_id, title FROM movies WHERE code = ?", (movie_code,)).fetchone()
+    cursor.execute("DELETE FROM movies WHERE code = ?", (code,))
+    changes = conn.total_changes
+    conn.commit()
     conn.close()
 
-    if result:
-        file_id, title = result  # Tuple ichidan ma'lumotlarni alohida ajratib olamiz
-        await bot.send_video(chat_id=message.chat.id, video=file_id, caption=f"🎬 **Kino nomi:** {title}\n🔑 **Kod:** {movie_code}", parse_mode="Markdown")
+    if changes > 0:
+        await message.answer(f"❌ `{code}` kodli kino bazadan butkul o'chirildi.")
     else:
-        await message.answer("❌ Afsuski, bunday kodli kino topilmadi. Kodni to'g'ri yozganingizni tekshiring.")
-        
+        await message.answer("❌ Bunday kodli kino topilmadi.")
+    await state.clear()
 
 @dp.message(AdminStates.waiting_for_broadcast_msg)
 async def process_broadcast(message: types.Message, state: FSMContext):
@@ -194,13 +202,13 @@ async def process_broadcast(message: types.Message, state: FSMContext):
         try:
             await bot.copy_message(chat_id=user[0], from_chat_id=message.chat.id, message_id=message.message_id)
             success += 1
-            await asyncio.sleep(0.05)  # Telegram spam blokiga tushmaslik uchun xavfsizlik vaqti
+            await asyncio.sleep(0.05)  
         except Exception:
             pass
     await message.answer(f"✅ Reklama yakunlandi.\n👥 Muvaffaqiyatli yuborildi: {success} ta odamga.")
     await state.clear()
 
-# --- MATNLI MATNLAR VA KINO QIDIRISH ---
+# --- KINO QIDIRISH VA MATNLAR ---
 @dp.message(F.text)
 async def handle_text_and_search(message: types.Message):
     user_id = message.from_user.id
@@ -219,7 +227,6 @@ async def handle_text_and_search(message: types.Message):
         await message.answer("💰 Bizni qo'llab-quvvatlaganingiz uchun rahmat!")
         return
 
-    # Kod orqali kinoni bazadan izlash
     movie_code = message.text.strip()
     conn = sqlite3.connect("universal_movies.db")
     cursor = conn.cursor()
@@ -227,19 +234,19 @@ async def handle_text_and_search(message: types.Message):
     conn.close()
 
     if result:
-        await bot.send_video(chat_id=message.chat.id, video=result[0], caption=f"🎬 **Kino nomi:** {result[1]}\n🔑 **Kod:** {movie_code}", parse_mode="Markdown")
+        file_id, title = result
+        await bot.send_video(chat_id=message.chat.id, video=file_id, caption=f"🎬 **Kino nomi:** {title}\n🔑 **Kod:** {movie_code}", parse_mode="Markdown")
     else:
         await message.answer("❌ Afsuski, bunday kodli kino topilmadi. Kodni to'g'ri yozganingizni tekshiring.")
 
-# --- ENGINI ISHGA TUSHIRISH (MAIN) ---
+# --- INLINE START ---
 async def main():
-    # 1. Flask veb serverini alohida fondagi oqimda yoqish (Render port so'ragani uchun)
     flask_thread = Thread(target=run_flask)
     flask_thread.daemon = True
     flask_thread.start()
-    
-    print("Udar Kino Bot Renderda muvaffaqiyatli ishga tushdi!")
-    
-    # 2. Botni xabarlarni eshitish rejimiga tushirish
+    print("Bot Renderda muvaffaqiyatli ishga tushdi!")
     await dp.start_polling(bot, skip_updates=True)
 
+if __name__ == '__main__':
+    asyncio.run(main())
+    
