@@ -263,5 +263,3 @@ def handle_texts(message):
         bot.send_message(message.chat.id, "🔍 Menga kino **kodini** (masalan: 102) yoki kino **nomini** yozib yuboring:")
         return
 
-    elif text == "💰 Donat bo'limi":
-
