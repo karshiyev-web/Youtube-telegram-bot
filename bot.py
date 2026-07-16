@@ -7,7 +7,7 @@ from telebot import TeleBot, types
 # --- ASOSIY SOZLAMALAR ---
 BOT_TOKEN = "8827072789:AAHaton57wWRfklLLflztam5I35AxjoAozI"
 ADMIN_ID = 6759476991
-CHANNELS = ["@Mega_KinoHd"]  # Kanalingiz avtomatik ulangan
+CHANNELS = ["@Mega_KinoHd"]  # Kanalingiz ulandi
 
 bot = TeleBot(BOT_TOKEN)
 app = Flask('')
@@ -16,7 +16,6 @@ app = Flask('')
 def init_db():
     conn = sqlite3.connect("universal_movies.db")
     cursor = conn.cursor()
-    # Kinolar jadvali
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS movies (
             code TEXT PRIMARY KEY,
@@ -24,7 +23,6 @@ def init_db():
             title TEXT
         )
     ''')
-    # Foydalanuvchilar jadvali
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY
@@ -35,7 +33,7 @@ def init_db():
 
 init_db()
 
-# --- WEB SERVER (RENDER UCHUN) ---
+# --- WEB SERVER ---
 @app.route('/')
 def home():
     return "Professional Kino Bot Aktiv!"
@@ -44,7 +42,7 @@ def run():
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
 
-# --- MAJBURIY OBUNANI TEKSHIRISH ---
+# --- MAJBURIY OBUNA ---
 def check_sub(user_id):
     if not CHANNELS:
         return True
@@ -65,7 +63,7 @@ def get_sub_keyboard():
     keyboard.add(types.InlineKeyboardButton(text="✅ Tekshirish", callback_data="check_subscription"))
     return keyboard
 
-# --- PROFESSIONAL KLAVIATURALAR ---
+# --- KLAVIATURALAR ---
 def get_main_keyboard(user_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row("🔍 Kino qidirish", "💰 Donat bo'limi")
@@ -85,13 +83,11 @@ def get_admin_keyboard():
     )
     return markup
 
-# --- BOT FUNKSIYALARI ---
-
+# --- BOT BUYRUQLARI ---
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     user_id = message.from_user.id
     
-    # Foydalanuvchini bazaga yozish
     conn = sqlite3.connect("universal_movies.db")
     cursor = conn.cursor()
     cursor.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
@@ -106,10 +102,7 @@ def send_welcome(message):
         )
         return
 
-    welcome_text = (
-        "👋 **Professional Kino Botga xush kelibsiz!**\n\n"
-        "🎬 Pastdagi tugmalar orqali botdan to'liq foydalanishingiz mumkin."
-    )
+    welcome_text = "👋 **Professional Kino Botga xush kelibsiz!**\n\n🎬 Pastdagi tugmalar orqali botdan to'liq foydalanishingiz mumkin."
     bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=get_main_keyboard(user_id))
 
 @bot.callback_query_handler(func=lambda call: call.data == "check_subscription")
@@ -163,7 +156,7 @@ def admin_callbacks(call):
 
     bot.answer_callback_query(call.id)
 
-# --- ADMIN STEPS (KINO QO'SHISH, TAHRIRLASH, O'CHIRISH) ---
+# --- ADMIN STEPS ---
 def process_code(message):
     movie_code = message.text.strip()
     msg = bot.reply_to(message, f"🎬 Kino videosini yuboring (Kod: {movie_code}):")
@@ -240,7 +233,7 @@ def process_broadcast(message):
             
     bot.send_message(message.chat.id, f"✅ Xabar tarqatish yakunlandi!\n👥 Qabul qildi: {success} ta foydalanuvchi.")
 
-# --- FOYDALANUVCHILAR UCHUN MATN VA QIDIRUV ---
+# --- FOYDALANUVCHILAR UCHUN QIDIRUV TIZIMI ---
 @bot.message_handler(func=lambda message: True)
 def handle_texts(message):
     user_id = message.from_user.id
@@ -259,7 +252,5 @@ def handle_texts(message):
         return
 
     elif text == "💰 Donat bo'limi":
-        donat_text = (
-            "❤️ **Botimizni qo'llab-quvvatlash bo'limi**\n\n"
+        donat_text = "❤️ **Botimizni qo'llab-quvvatlash bo'limi**\n\nBotimiz mutlaqo bepul xizmat ko'rsatadi. Agar bot sizga yoqqan bo'lsa va loyiha rivojlanishiga hissa qo'shmoqchi bo'lsangiz, loyihani qo'llab-quvvatlashingiz mumkin:\n\n💳 **UzCard / Humo:** `9860120106644442` (Karshiyev A)\n\n🔔 _Yig'ilgan mablag'lar server xarajatlariga sarflanadi. Rahmat!_"
     
-  
