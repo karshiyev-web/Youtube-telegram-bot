@@ -1,4 +1,3 @@
-<?php
 ob_start();
 error_reporting(0);
 date_Default_timezone_set('Asia/Tashkent');
@@ -124,7 +123,6 @@ $type = $message->chat->type;
 $text = $message->text;
 $premium = $message->from->is_premium;
 $bio = $message->from->about;
-$username = $message->from->username;
 $chat_id = $message->chat->id;
 $message_id = $message->message_id;
 $reply = $message->reply_to_message->text;
