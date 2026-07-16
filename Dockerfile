@@ -8,5 +8,5 @@ COPY . /app
 WORKDIR /app
 
 # Render bergan dinamik portni ishga tushirish qismiga biriktiramiz
-CMD ["sh", "-c", "php -S 0.0.0.0:$PORT bot.php"]
+CMD ["sh", "-c", "php -S 0.0.0.0:8080 bot.php"]
 
