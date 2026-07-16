@@ -117,11 +117,11 @@ async def admin_callbacks(call: types.CallbackQuery, state: FSMContext):
     if call.from_user.id != ADMIN_ID:
         return
 
-    if call.data == "adm_stats":
+        if call.data == "adm_stats":
         conn = sqlite3.connect("universal_movies.db")
         cursor = conn.cursor()
-        u_count = cursor.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-        m_count = cursor.execute("SELECT COUNT(*) FROM movies").fetchone()[0]
+        u_count = cursor.execute("SELECT COUNT(*) FROM users").fetchone()[0] # [0] qo'shildi
+        m_count = cursor.execute("SELECT COUNT(*) FROM movies").fetchone()[0] # [0] qo'shildi
         conn.close()
         await call.message.answer(f"📊 **Bot statistikasi:**\n\n👤 Jami a'zolar: `{u_count}` ta\n🎬 Bazadagi kinolar: `{m_count}` ta", parse_mode="Markdown")
     
@@ -167,19 +167,19 @@ async def process_movie_video(message: types.Message, state: FSMContext):
 
 @dp.message(AdminStates.waiting_for_delete_code)
 async def process_delete_movie(message: types.Message, state: FSMContext):
-    code = message.text.strip()
+        # Kod orqali kinoni bazadan izlash
+    movie_code = message.text.strip()
     conn = sqlite3.connect("universal_movies.db")
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM movies WHERE code = ?", (code,))
-    changes = conn.total_changes
-    conn.commit()
+    result = cursor.execute("SELECT file_id, title FROM movies WHERE code = ?", (movie_code,)).fetchone()
     conn.close()
 
-    if changes > 0:
-        await message.answer(f"❌ `{code}` kodli kino bazadan butkul o'chirildi.")
+    if result:
+        file_id, title = result  # Tuple ichidan ma'lumotlarni alohida ajratib olamiz
+        await bot.send_video(chat_id=message.chat.id, video=file_id, caption=f"🎬 **Kino nomi:** {title}\n🔑 **Kod:** {movie_code}", parse_mode="Markdown")
     else:
-        await message.answer("❌ Bunday kodli kino topilmadi.")
-    await state.clear()
+        await message.answer("❌ Afsuski, bunday kodli kino topilmadi. Kodni to'g'ri yozganingizni tekshiring.")
+        
 
 @dp.message(AdminStates.waiting_for_broadcast_msg)
 async def process_broadcast(message: types.Message, state: FSMContext):
