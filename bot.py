@@ -7,7 +7,7 @@ from telebot import TeleBot, types
 # --- ASOSIY SOZLAMALAR ---
 BOT_TOKEN = "8827072789:AAHaton57wWRfklLLflztam5I35AxjoAozI"
 ADMIN_ID = 6759476991
-CHANNELS = ["@Mega_KinoHd"]  # Kanalingiz ulandi
+CHANNELS = ["@Mega_KinoHd"]  
 
 bot = TeleBot(BOT_TOKEN)
 app = Flask('')
@@ -33,14 +33,19 @@ def init_db():
 
 init_db()
 
-# --- WEB SERVER ---
+# --- WEB SERVER (Render portni tekshirishi uchun) ---
 @app.route('/')
 def home():
     return "Professional Kino Bot Aktiv!"
 
 def run():
+    # Render o'zi avtomat PORT taqdim etadi, bo'lmasa 8080 ishlaydi
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
 
 # --- MAJBURIY OBUNA ---
 def check_sub(user_id):
@@ -105,10 +110,46 @@ def send_welcome(message):
     welcome_text = "👋 **Professional Kino Botga xush kelibsiz!**\n\n🎬 Pastdagi tugmalar orqali botdan to'liq foydalanishingiz mumkin."
     bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=get_main_keyboard(user_id))
 
+# --- TEXT XABARLARNI QABUL QILISH (Kino kodini qidirish uchun) ---
+@bot.message_handler(func=lambda message: True)
+def handle_text(message):
+    user_id = message.from_user.id
+    
+    if not check_sub(user_id):
+        bot.send_message(message.chat.id, "⚠️ Avval kanalga a'zo bo'ling!", reply_markup=get_sub_keyboard())
+        return
+
+    if message.text == "⚙️ Admin Panel" and user_id == ADMIN_ID:
+        bot.send_message(message.chat.id, "⚙️ Admin panelga xush kelibsiz:", reply_markup=get_admin_keyboard())
+        return
+    elif message.text == "🔍 Kino qidirish":
+        bot.send_message(message.chat.id, "🔢 Kino kodini yuboring (Masalan: 120):")
+        return
+    elif message.text == "💰 Donat bo'limi":
+        bot.send_message(message.chat.id, "💰 Bizni qo'llab-quvvatlaganingiz uchun rahmat!")
+        return
+
+    # Kino kodini bazadan qidirish
+    movie_code = message.text.strip()
+    conn = sqlite3.connect("universal_movies.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT file_id, title FROM movies WHERE code = ?", (movie_code,))
+    result = cursor.fetchone()
+    conn.close()
+
+    if result:
+        file_id, title = result
+        bot.send_video(message.chat.id, file_id, caption=f"🎬 **Kino nomi:** {title}\n🔑 **Kod:** {movie_code}", parse_mode="Markdown")
+    else:
+        bot.send_message(message.chat.id, "❌ Afsuski, bunday kodli kino topilmadi.")
+
 @bot.callback_query_handler(func=lambda call: call.data == "check_subscription")
 def check_callback(call):
     if check_sub(call.from_user.id):
-        bot.delete_message(call.message.chat.id, call.message.message_id)
+        try:
+            bot.delete_message(call.message.chat.id, call.message.message_id)
+        except:
+            pass
         bot.send_message(
             call.message.chat.id, 
             "🎉 Rahmat! Obuna tasdiqlandi. Quyidagi menyudan foydalaning:",
@@ -148,7 +189,7 @@ def admin_callbacks(call):
         bot.register_next_step_handler(msg, process_delete_code)
 
     elif call.data == "admin_broadcast":
-        msg = bot.send_message(call.message.chat.id, "📢 Barcha foydalanuvchilarga yuboriladigan xabarni kiriting (Matn, rasm yoki video):")
+        msg = bot.send_message(call.message.chat.id, "📢 Reklama xabarini kiriting (Matn, rasm yoki video):")
         bot.register_next_step_handler(msg, process_broadcast)
         
     elif call.data == "admin_close":
@@ -215,45 +256,9 @@ def process_delete_code(message):
     conn.close()
 
 def process_broadcast(message):
+    bot.reply_to(message, "📢 Reklama tarqatish boshlandi...")
     conn = sqlite3.connect("universal_movies.db")
     cursor = conn.cursor()
     cursor.execute("SELECT user_id FROM users")
     users = cursor.fetchall()
-    conn.close()
-
-    success = 0
-    bot.send_message(message.chat.id, f"🚀 Xabar tarqatish boshlandi... (Jami: {len(users)} ta odam)")
     
-    for user in users:
-        try:
-            bot.copy_message(user[0], message.chat.id, message.message_id)
-            success += 1
-        except Exception:
-            pass
-            
-    bot.send_message(message.chat.id, f"✅ Xabar tarqatish yakunlandi!\n👥 Qabul qildi: {success} ta foydalanuvchi.")
-
-# --- FOYDALANUVCHILAR UCHUN QIDIRUV TIZIMI ---
-@bot.message_handler(func=lambda message: True)
-def handle_texts(message):
-    user_id = message.from_user.id
-    if not check_sub(user_id):
-        bot.send_message(message.chat.id, "⚠️ Botdan foydalanish uchun kanalimizga a'zo bo'ling:", reply_markup=get_sub_keyboard())
-        return
-
-    text = message.text.strip()
-
-    if text == "⚙️ Admin Panel" and user_id == ADMIN_ID:
-        bot.send_message(message.chat.id, "🎛 **Admin boshqaruv paneli:**", reply_markup=get_admin_keyboard(), parse_mode="Markdown")
-        return
-
-    elif text == "🔍 Kino qidirish":
-        bot.send_message(message.chat.id, "🔍 Menga kino **kodini** (masalan: 102) yoki kino **nomini** yozib yuboring:")
-        return
-
-    elif text == "💰 Donat bo'limi":
-        donat_text = "❤️ **Botimizni qo'llab-quvvatlash bo'limi**\n\nBotimiz mutlaqo bepul xizmat ko'ga ega. Agar bot sizga yoqqan bo'lsa, uni qo'llab-quvvatlashingiz mumkin:\n\n💳 **UzCard:** `9860120106644442` (Karshiyev A.)\n\n🔔 _Yig'ilgan mablag'lar server xarajatlariga sarflanadi. Rahmat!_"
-        bot.send_message(message.chat.id, donat_text, parse_mode="Markdown")
-        return
-
-
