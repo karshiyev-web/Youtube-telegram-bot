@@ -2,8 +2,8 @@
 ob_start();
 error_reporting(0);
 date_Default_timezone_set('Asia/Tashkent');
-define('API_KEY',"7004602150:AAFUrbyjXMjn1nNEqqT8JqWe70ukeGi_eBI");
-$XasanovUz = "6638653223";
+define('API_KEY',"8827072789:AAFtk5jOswjNxIjiBY3yBT9Bc9BUepVbeZc");
+$XasanovUz = "6759476991";
 $admins = file_get_contents("tizim/admins.txt");
 $admin = explode("\n", $admins);
 array_push($admin,$XasanovUz);
