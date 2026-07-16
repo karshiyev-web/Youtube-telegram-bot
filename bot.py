@@ -127,9 +127,9 @@ def admin_callbacks(call):
         conn = sqlite3.connect("universal_movies.db")
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM users")
-        total_users = cursor.fetchone()[0]
+        total_users = cursor.fetchone()
         cursor.execute("SELECT COUNT(*) FROM movies")
-        total_movies = cursor.fetchone()[0]
+        total_movies = cursor.fetchone()
         conn.close()
         
         stats_text = f"📊 **Bot statistikasi:**\n\n👤 Jami a'zolar: `{total_users}` ta\n🎬 Bazadagi kinolar: `{total_movies}` ta"
@@ -185,7 +185,7 @@ def process_edit_code(message):
     conn.close()
 
     if result:
-        msg = bot.reply_to(message, f"📝 Kino hozirgi nomi: *{result[0]}*\n\nYangi nom (tavsif) kiriting:")
+        msg = bot.reply_to(message, f"📝 Kino hozirgi nomi: *{result}*\n\nYangi nom (tavsif) kiriting:")
         bot.register_next_step_handler(msg, process_edit_title, movie_code)
     else:
         bot.reply_to(message, "❌ Bunday kodli kino topilmadi.")
@@ -209,7 +209,7 @@ def process_delete_code(message):
     if result:
         cursor.execute("DELETE FROM movies WHERE code = ?", (movie_code,))
         conn.commit()
-        bot.reply_to(message, f"❌ `{result[0]}` nomi ostidagi kino bazadan butkul o'chirildi.", parse_mode="Markdown")
+        bot.reply_to(message, f"❌ `{result}` nomi ostidagi kino bazadan butkul o'chirildi.", parse_mode="Markdown")
     else:
         bot.reply_to(message, "❌ Bunday kodli kino topilmadi.")
     conn.close()
@@ -226,7 +226,7 @@ def process_broadcast(message):
     
     for user in users:
         try:
-            bot.copy_message(user[0], message.chat.id, message.message_id)
+            bot.copy_message(user, message.chat.id, message.message_id)
             success += 1
         except Exception:
             pass
@@ -252,5 +252,5 @@ def handle_texts(message):
         return
 
     elif text == "💰 Donat bo'limi":
-        donat_text = "❤️ **Botimizni qo'llab-quvvatlash bo'limi**\n\nBotimiz mutlaqo bepul xizmat ko'rsatadi. Agar bot sizga yoqqan bo'lsa va loyiha rivojlanishiga hissa qo'shmoqchi bo'lsangiz, loyihani qo'llab-quvvatlashingiz mumkin:\n\n💳 **UzCard / Humo:** `9860120106644442` (Karshiyev A)\n\n🔔 _Yig'ilgan mablag'lar server xarajatlariga sarflanadi. Rahmat!_"
-    
+        donat_text = "❤️ **Botimizni qo'llab-quvvatlash bo'limi**\n\nBotimiz mutlaqo bepul xizmat ko'rsatadi. Agar bot sizga yoqqan bo'lsa va loyiha rivojlanishiga hissa qo'shmoqchi bo'lsangiz, loyihani qo'llab-quvvatlashingiz mumkin:\n\n💳 **UzCard:** `9860120106644442` (Karshiyev A.)\n\n🔔 _Yig'ilgan mablag'lar server xarajatlariga sarflanadi. Rahmat!_"
+
